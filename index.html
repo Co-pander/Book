@@ -822,6 +822,8 @@ function openMenu(){
         <button class="mini" id="chgBtn">変更</button></div>
       <div class="setrow"><div><div class="sl">🔒 今すぐロック</div></div>
         <button class="mini" id="lockNow">ロック</button></div>
+      <div class="setrow"><div><div class="sl" style="color:var(--danger)">🗑️ 全データ削除</div><div class="sd">登録を全件消去（入れ直し用）</div></div>
+        <button class="mini" id="delAllBtn" style="color:var(--danger);border-color:var(--danger)">削除</button></div>
       <div class="formfoot"><button class="btn sec" id="cancelBtn" type="button">閉じる</button></div>
       <input type="file" id="csvFile" accept=".csv,text/csv" class="hidden">
     </div></div>`;
@@ -837,6 +839,17 @@ function openMenu(){
   $("impBtn").onclick=()=>$("csvFile").click();
   $("csvFile").onchange=importCSV;
   $("chgBtn").onclick=changeMaster;
+  $("delAllBtn").onclick=deleteAllData;
+}
+
+async function deleteAllData(){
+  if(entries.length===0){toast("削除するデータがありません");return;}
+  if(!confirm(`⚠️ 登録 ${entries.length} 件をすべて削除します。\nこの操作は取り消せません。\n（マスターパスワードの設定は残ります）\n\n先にCSVエクスポートでバックアップ済みですか？ 続行しますか？`))return;
+  if(!confirm("本当に全件削除してよろしいですか？"))return;
+  entries=[];
+  await saveData();
+  refreshCategoryFilter(); render(); closeModal();
+  toast("全データを削除しました");
 }
 
 const CSV_COLS=["no","day","title","category","idmail","pw","username","url","memo","fav","created","updated"];

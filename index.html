@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#2563eb">
+<title>パスワード管理</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="パスワード管理">
+<style>
+  :root{
+    --bg:#0f172a; --panel:#1e293b; --panel2:#27364d; --line:#334155;
+    --txt:#e2e8f0; --muted:#94a3b8; --accent:#3b82f6; --accent2:#2563eb;
+    --ok:#22c55e; --warn:#f59e0b; --danger:#ef4444; --chip:#334155;
+    --fav:#d9bf3b;
+    --lockbg:linear-gradient(160deg,#0f172a,#1e293b);
+  }
+  :root[data-theme="light"]{
+    --bg:#eef2f7; --panel:#ffffff; --panel2:#f3f6fa; --line:#d8e0ea;
+    --txt:#1e293b; --muted:#64748b; --accent:#2563eb; --accent2:#1d4ed8;
+    --ok:#16a34a; --warn:#d97706; --danger:#dc2626; --chip:#e7edf4;
+    --fav:#c2a52a;
+    --lockbg:linear-gradient(160deg,#dbe5f1,#f3f6fa);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:-apple-system,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+    background:var(--bg); color:var(--txt); font-size:15px; line-height:1.5;
+  }
+  button{font-family:inherit; cursor:pointer;}
+  input,select,textarea{font-family:inherit; font-size:15px;}
+  .hidden{display:none !important;}
+
+  /* ---------- Lock screen ---------- */
+  #lock{
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    background:var(--lockbg); padding:20px; z-index:1000;
+  }
+  .lockcard{
+    width:100%; max-width:380px; background:var(--panel); border:1px solid var(--line);
+    border-radius:16px; padding:28px 24px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.4);
+  }
+  .lockcard .logo{font-size:46px; margin-bottom:6px;}
+  .lockcard h1{font-size:20px; margin:0 0 4px;}
+  .lockcard p{color:var(--muted); font-size:13px; margin:0 0 20px;}
+  .lockcard input{
+    width:100%; padding:13px 14px; border-radius:10px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--txt); margin-bottom:12px;
+  }
+  .lockcard input:focus{outline:none; border-color:var(--accent);}
+  .btn{
+    border:none; border-radius:10px; padding:12px 16px; font-size:15px; font-weight:600;
+    background:var(--accent); color:#fff; width:100%; white-space:nowrap;
+  }
+  .btn:hover{background:var(--accent2);}
+  .btn.sec{background:var(--panel2); color:var(--txt); border:1px solid var(--line); font-weight:500;}
+  .btn.sec:hover{background:var(--chip);}
+  .err{color:var(--danger); font-size:13px; min-height:18px; margin-top:4px;}
+  .hint{color:var(--warn); font-size:12px; text-align:left; background:rgba(245,158,11,.1);
+        border:1px solid rgba(245,158,11,.3); border-radius:8px; padding:8px 10px; margin-bottom:14px;}
+
+  /* ---------- App shell ---------- */
+  #app{display:flex; flex-direction:column; height:100vh;}
+  header{
+    background:var(--panel); border-bottom:1px solid var(--line); padding:10px 14px;
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; position:sticky; top:0; z-index:50;
+  }
+  header .title{font-weight:700; font-size:17px; display:flex; align-items:center; gap:6px;}
+  header .grow{flex:1;}
+  .iconbtn{
+    background:var(--panel2); border:1px solid var(--line); color:var(--txt);
+    border-radius:9px; padding:8px 11px; font-size:14px; display:inline-flex; align-items:center; gap:6px;
+  }
+  .iconbtn:hover{background:var(--chip);}
+  .iconbtn.primary{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .iconbtn.primary:hover{background:var(--accent2);}
+
+  .searchbar{padding:10px 14px; background:var(--bg); border-bottom:1px solid var(--line);
+             display:flex; gap:8px; flex-wrap:wrap; position:sticky; top:53px; z-index:40;}
+  .searchbar input[type=search]{
+    flex:1; min-width:160px; padding:10px 12px; border-radius:9px; border:1px solid var(--line);
+    background:var(--panel); color:var(--txt);
+  }
+  .searchbar select{
+    padding:10px 12px; border-radius:9px; border:1px solid var(--line);
+    background:var(--panel); color:var(--txt);
+  }
+  .searchbar input:focus,.searchbar select:focus{outline:none;border-color:var(--accent);}
+
+  /* custom dropdown (colored ★ filter) */
+  .dd{position:relative; display:inline-block;}
+  .ddbtn{padding:10px 12px; border-radius:9px; border:1px solid var(--line); background:var(--panel);
+         color:var(--txt); font-size:15px; display:inline-flex; align-items:center; gap:8px; white-space:nowrap;}
+  .ddbtn:hover{border-color:var(--accent);}
+  .ddcaret{color:var(--muted); font-size:11px;}
+  .ddmenu{position:absolute; top:calc(100% + 4px); left:0; background:var(--panel); border:1px solid var(--line);
+          border-radius:9px; padding:4px; z-index:60; min-width:160px; box-shadow:0 10px 28px rgba(0,0,0,.28);}
+  .ddopt{display:flex; align-items:center; gap:9px; width:100%; text-align:left; padding:9px 11px;
+         border:none; background:none; color:var(--txt); border-radius:7px; font-size:14px;}
+  .ddopt:hover{background:var(--panel2);}
+  .fstar{font-size:15px; line-height:1;}
+
+  main{flex:1; overflow-y:auto; padding:14px; -webkit-overflow-scrolling:touch;}
+  .count{color:var(--muted); font-size:13px; margin:0 2px 10px;}
+
+  /* ---------- Cards (list) ---------- */
+  .list{display:grid; gap:10px; grid-template-columns:1fr;}
+  @media(min-width:640px){.list{grid-template-columns:1fr 1fr;}}
+  @media(min-width:1000px){.list{grid-template-columns:1fr 1fr 1fr;}}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:13px 14px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .card .top{display:flex; align-items:flex-start; gap:8px;}
+  .card .no{font-size:11px; color:var(--muted); background:var(--panel2); border-radius:6px;
+            padding:2px 7px; white-space:nowrap;}
+  .card .ttl{font-weight:700; font-size:16px; flex:1; word-break:break-word;}
+  .card .cat{font-size:11px; color:#cbd5e1; background:var(--chip); border-radius:20px; padding:3px 9px; white-space:nowrap;}
+  .fav{color:var(--fav); cursor:pointer; font-size:18px; line-height:1; background:none; border:none; padding:0;}
+  .fav.off{color:var(--line);}
+  .row{display:flex; align-items:center; gap:8px; font-size:13.5px; min-height:26px;}
+  .row .lbl{color:var(--muted); width:62px; flex-shrink:0; font-size:12px;}
+  .row .val{flex:1; word-break:break-all; font-family:ui-monospace,Menlo,Consolas,monospace;}
+  .row .val.plain{font-family:inherit;}
+  .mini{background:var(--panel2); border:1px solid var(--line); color:var(--muted); border-radius:7px;
+        padding:4px 8px; font-size:12px;}
+  .mini:hover{background:var(--chip); color:var(--txt);}
+  .pwdots{letter-spacing:2px;}
+  .card .memo{font-size:12.5px; color:var(--muted); white-space:pre-wrap; word-break:break-word;
+              border-top:1px dashed var(--line); padding-top:7px;}
+  .card .foot{display:flex; gap:8px; justify-content:flex-end; border-top:1px solid var(--line); padding-top:8px;}
+  .dupstar{color:var(--danger); font-size:15px; line-height:1; cursor:help;}
+
+  .empty{text-align:center; color:var(--muted); padding:60px 20px;}
+  .empty .big{font-size:40px; margin-bottom:10px;}
+
+  /* ---------- Table (帳票) view ---------- */
+  .list.table-mode{display:block;}
+  .tablewrap{overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--panel);}
+  table.tbl{border-collapse:collapse; width:100%; font-size:13px; min-width:720px;}
+  .tbl th,.tbl td{padding:3px 9px; text-align:left; border-bottom:1px solid var(--line); white-space:nowrap; vertical-align:middle; line-height:1.3;}
+  .tbl th{position:sticky; top:0; background:var(--panel2); color:var(--muted); font-weight:600; font-size:12px; z-index:2;}
+  .tbl .mini{padding:2px 7px;}
+  .tbl .fav{font-size:15px;}
+  .tbl tbody tr:hover td{background:var(--panel2);}
+  .tbl .tttl{font-weight:600; white-space:normal; max-width:240px; word-break:break-word;}
+  .tbl .mono{font-family:ui-monospace,Menlo,Consolas,monospace;}
+  .tbl td.acts{white-space:nowrap;}
+  .tbl td.acts .mini{margin-left:4px;}
+  .tbl .no-c{color:var(--muted); text-align:right; font-variant-numeric:tabular-nums;}
+
+  /* ---------- Modal / form ---------- */
+  .overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:flex-end;
+           justify-content:center; z-index:200; padding:0;}
+  @media(min-width:640px){.overlay{align-items:center; padding:20px;}}
+  .modal{
+    background:var(--panel); width:100%; max-width:560px; max-height:92vh; overflow-y:auto;
+    border:1px solid var(--line); border-radius:16px 16px 0 0; padding:18px;
+  }
+  @media(min-width:640px){.modal{border-radius:16px;}}
+  .modal h2{margin:0 0 14px; font-size:18px;}
+  .field{margin-bottom:13px;}
+  .field label{display:block; font-size:12.5px; color:var(--muted); margin-bottom:5px;}
+  .field input,.field select,.field textarea{
+    width:100%; padding:11px 12px; border-radius:9px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--txt);
+  }
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none; border-color:var(--accent);}
+  .field textarea{resize:vertical; min-height:70px;}
+  .field .lc{ text-transform:none; }
+  .pwwrap{display:flex; gap:6px;}
+  .pwwrap input{flex:1;}
+  .strength{height:5px; border-radius:3px; background:var(--line); margin-top:6px; overflow:hidden;}
+  .strength > div{height:100%; width:0; transition:.25s;}
+  .strmeta{display:flex; justify-content:space-between; font-size:11px; margin-top:3px; color:var(--muted);}
+  .genrow{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;
+          background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:9px;}
+  .genrow label{font-size:12px; color:var(--muted); display:flex; align-items:center; gap:4px;}
+  .genrow input[type=number]{width:62px; padding:6px;}
+  .formfoot{display:flex; gap:10px; margin-top:6px; flex-wrap:wrap;}
+  .formfoot .btn{flex:1 1 120px;}
+  .formfoot.dup3{flex-wrap:nowrap; gap:7px;}
+  .formfoot.dup3 .btn{flex:1 1 0; min-width:0; padding-left:6px; padding-right:6px; font-size:14px;}
+  .twocol{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+  /* toast */
+  #toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px);
+         background:#0b1220; border:1px solid var(--line); color:#fff; padding:10px 18px; border-radius:30px;
+         font-size:13.5px; opacity:0; transition:.25s; z-index:500; pointer-events:none; box-shadow:0 8px 24px rgba(0,0,0,.4);}
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  /* settings sheet reuse modal */
+  .setrow{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid var(--line);}
+  .setrow:last-child{border-bottom:none;}
+  .setrow .sl{font-size:14px;}
+  .setrow .sd{font-size:12px; color:var(--muted);}
+  input::placeholder,textarea::placeholder{color:#64748b;}
+</style>
+</head>
+<body>
+
+<!-- ============ LOCK SCREEN ============ -->
+<div id="lock">
+  <div class="lockcard">
+    <div class="logo">🔐</div>
+    <h1 id="lockTitle">ロック解除</h1>
+    <p id="lockSub">マスターパスワードを入力してください</p>
+    <div id="firstHint" class="hint hidden">
+      ⚠️ 初回設定です。このマスターパスワードで全データを暗号化します。<br>
+      <b>忘れると復元できません。</b>必ず控えてください。
+    </div>
+    <input id="mp1" type="password" placeholder="マスターパスワード" autocomplete="off">
+    <input id="mp2" type="password" class="hidden" placeholder="確認用にもう一度入力" autocomplete="off">
+    <button id="unlockBtn" class="btn">解除</button>
+    <div id="lockErr" class="err"></div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hidden">
+  <header>
+    <div class="title">🔐 <span>パスワード管理</span></div>
+    <div class="grow"></div>
+    <button class="iconbtn primary" id="addBtn">＋ 新規</button>
+    <button class="iconbtn" id="menuBtn">⋯</button>
+  </header>
+
+  <div class="searchbar">
+    <input id="q" type="search" placeholder="フリーワード検索（タイトル/ID/ユーザー名/メモ…）">
+    <select id="catFilter"><option value="">全カテゴリ</option></select>
+    <div class="dd" id="markDD">
+      <button type="button" class="ddbtn" id="markBtn">
+        <span id="markBtnLabel"><span class="fstar" style="color:var(--muted)">★</span> すべて</span>
+        <span class="ddcaret">▾</span>
+      </button>
+      <div class="ddmenu hidden" id="markMenu">
+        <button type="button" class="ddopt" data-mark=""><span class="fstar" style="color:var(--muted)">★</span> すべて</button>
+        <button type="button" class="ddopt" data-mark="fav"><span class="fstar" style="color:var(--fav)">★</span> お気に入り</button>
+        <button type="button" class="ddopt" data-mark="dup"><span class="fstar" style="color:var(--danger)">★</span> 重複あり</button>
+      </div>
+    </div>
+    <select id="sortSel">
+      <option value="no_desc">No 降順</option>
+      <option value="no_asc">No 昇順</option>
+      <option value="title">タイトル順</option>
+      <option value="updated">更新が新しい順</option>
+      <option value="fav">★お気に入り優先</option>
+    </select>
+    <select id="viewSel">
+      <option value="card">カード表示</option>
+      <option value="table">一覧（帳票）</option>
+    </select>
+  </div>
+
+  <main>
+    <div class="count" id="count"></div>
+    <div class="list" id="list"></div>
+    <div class="empty hidden" id="empty">
+      <div class="big">📭</div>
+      <div>まだ登録がありません</div>
+      <div style="margin-top:8px;color:#64748b;font-size:13px;">右上の「＋ 新規」から追加できます</div>
+    </div>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* =========================================================
+   Storage keys
+========================================================= */
+const K_SALT="pm_salt", K_VERIFY="pm_verify", K_DATA="pm_data", K_SET="pm_settings";
+const VERIFY_TOKEN="pm_verify_ok_v1";
+const PBKDF2_ITER=250000;
+
+/* runtime state */
+let cryptoKey=null;          // CryptoKey held only in memory while unlocked
+let entries=[];              // decrypted array
+let settings={autolock:5, theme:"light", view:"card"};   // autolock: minutes(0=off), theme: light|dark, view: card|table
+let lockTimer=null;
+let editingId=null;          // null = new
+let clipTimer=null;
+
+/* =========================================================
+   Crypto helpers (Web Crypto, AES-GCM + PBKDF2)
+========================================================= */
+const enc=new TextEncoder(), dec=new TextDecoder();
+function b64(buf){return btoa(String.fromCharCode(...new Uint8Array(buf)));}
+function unb64(str){return Uint8Array.from(atob(str),c=>c.charCodeAt(0));}
+
+async function deriveKey(password,salt){
+  const base=await crypto.subtle.importKey("raw",enc.encode(password),"PBKDF2",false,["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    {name:"PBKDF2",salt,iterations:PBKDF2_ITER,hash:"SHA-256"},
+    base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+}
+async function encryptStr(key,plain){
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,enc.encode(plain));
+  const out=new Uint8Array(iv.length+ct.byteLength);
+  out.set(iv,0); out.set(new Uint8Array(ct),iv.length);
+  return b64(out);
+}
+async function decryptStr(key,packed){
+  const raw=unb64(packed);
+  const iv=raw.slice(0,12), ct=raw.slice(12);
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv},key,ct);
+  return dec.decode(pt);
+}
+
+/* =========================================================
+   Persistence
+========================================================= */
+async function saveData(){
+  if(!cryptoKey) return;
+  try{
+    const json=JSON.stringify(entries);
+    localStorage.setItem(K_DATA,await encryptStr(cryptoKey,json));
+    localStorage.setItem(K_SET,JSON.stringify(settings));
+  }catch(err){
+    console.error("saveData failed:",err);
+    toast("⚠️ 保存に失敗しました。空き容量をご確認ください");
+  }
+}
+async function loadData(){
+  const raw=localStorage.getItem(K_DATA);
+  entries = raw ? JSON.parse(await decryptStr(cryptoKey,raw)) : [];
+  const s=localStorage.getItem(K_SET);
+  if(s){try{settings=Object.assign(settings,JSON.parse(s));}catch(e){}}
+}
+
+/* =========================================================
+   Lock / Unlock
+========================================================= */
+const $=id=>document.getElementById(id);
+const isFirstRun=()=>!localStorage.getItem(K_VERIFY);
+
+function applyTheme(){
+  document.documentElement.setAttribute("data-theme", settings.theme==="dark"?"dark":"light");
+}
+// テーマ設定はK_SETに平文保存しているので、ロック解除前でも読み込んで反映できる
+function applyThemeEarly(){
+  try{const s=JSON.parse(localStorage.getItem(K_SET)||"{}"); if(s.theme)settings.theme=s.theme;}catch(e){}
+  applyTheme();
+}
+
+function showLockUI(){
+  const first=isFirstRun();
+  $("lockTitle").textContent = first ? "初期設定" : "ロック解除";
+  $("lockSub").textContent   = first ? "新しいマスターパスワードを決めてください" : "マスターパスワードを入力してください";
+  $("firstHint").classList.toggle("hidden",!first);
+  $("mp2").classList.toggle("hidden",!first);
+  $("unlockBtn").textContent = first ? "設定して開始" : "解除";
+  $("lockErr").textContent="";
+  $("mp1").value=""; $("mp2").value="";
+  $("lock").classList.remove("hidden");
+  $("app").classList.add("hidden");
+  setTimeout(()=>$("mp1").focus(),100);
+}
+
+async function doUnlock(){
+  const pw=$("mp1").value;
+  const err=$("lockErr");
+  if(!(window.crypto && crypto.subtle)){
+    err.textContent="この環境では暗号化を利用できません（HTTPSで開いてください）";return;}
+  if(!pw){err.textContent="パスワードを入力してください";return;}
+  if(isFirstRun()){
+    if(pw.length<6){err.textContent="6文字以上にしてください";return;}
+    if(pw!==$("mp2").value){err.textContent="確認用パスワードが一致しません";return;}
+    const salt=crypto.getRandomValues(new Uint8Array(16));
+    cryptoKey=await deriveKey(pw,salt);
+    localStorage.setItem(K_SALT,b64(salt));
+    localStorage.setItem(K_VERIFY,await encryptStr(cryptoKey,VERIFY_TOKEN));
+    entries=[]; await saveData();
+    enterApp();
+  }else{
+    try{
+      const salt=unb64(localStorage.getItem(K_SALT));
+      const key=await deriveKey(pw,salt);
+      const tok=await decryptStr(key,localStorage.getItem(K_VERIFY));
+      if(tok!==VERIFY_TOKEN) throw new Error("bad");
+      cryptoKey=key;
+      await loadData();
+      enterApp();
+    }catch(e){
+      err.textContent="マスターパスワードが違います";
+      $("mp1").select();
+    }
+  }
+}
+function enterApp(){
+  applyTheme();
+  $("lock").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  $("viewSel").value=settings.view||"card";
+  refreshCategoryFilter();
+  render();
+  resetLockTimer();
+}
+function lock(){
+  cryptoKey=null; entries=[];
+  if(lockTimer)clearTimeout(lockTimer);
+  closeModal();
+  showLockUI();
+}
+function resetLockTimer(){
+  if(lockTimer)clearTimeout(lockTimer);
+  if(settings.autolock>0 && cryptoKey){
+    lockTimer=setTimeout(()=>{lock();toast("自動ロックしました");},settings.autolock*60000);
+  }
+}
+// 無操作タイマーの再設定。マウス移動などで多発するため5秒に1回へ間引く
+let lastActivity=0;
+function onActivity(){
+  if(!cryptoKey) return;
+  const now=Date.now();
+  if(now-lastActivity<5000) return;
+  lastActivity=now;
+  resetLockTimer();
+}
+["click","keydown","mousemove","touchstart"].forEach(ev=>
+  document.addEventListener(ev,onActivity,{passive:true}));
+
+/* =========================================================
+   Rendering
+========================================================= */
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8);}
+// 表示No：登録（作成）順に並べた連番。削除すると自動で詰まり、最大値＝登録件数になる。
+function noMap(){
+  const sorted=entries.slice().sort((a,b)=>(a.created||"").localeCompare(b.created||""));
+  const m={}; sorted.forEach((e,i)=>m[e.id]=i+1); return m;
+}
+function uniqueCategories(){return [...new Set(entries.map(e=>e.category).filter(Boolean))].sort();}
+function uniqueMails(){return [...new Set(entries.map(e=>e.idmail).filter(Boolean))].sort();}
+
+function refreshCategoryFilter(){
+  const sel=$("catFilter"); const cur=sel.value;
+  sel.innerHTML='<option value="">全カテゴリ</option>'+
+    uniqueCategories().map(c=>`<option>${esc(c)}</option>`).join("");
+  sel.value=cur;
+}
+function esc(s){return (s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
+
+function pwDuplicates(){
+  const map={};
+  entries.forEach(e=>{if(e.pw){map[e.pw]=(map[e.pw]||0)+1;}});
+  return map;
+}
+
+function render(){
+  const q=$("q").value.trim().toLowerCase();
+  const cat=$("catFilter").value;
+  const mark=markFilterValue;
+  const sort=$("sortSel").value;
+  const dups=pwDuplicates();
+  const nos=noMap();
+
+  let arr=entries.filter(e=>{
+    if(cat && e.category!==cat) return false;
+    if(mark==="fav" && !e.fav) return false;
+    if(mark==="dup" && !(e.pw && dups[e.pw]>1)) return false;
+    if(!q) return true;
+    return [nos[e.id],e.day,e.title,e.category,e.idmail,e.username,e.memo,e.url]
+      .map(v=>(v??"").toString().toLowerCase()).join(" ").includes(q);
+  });
+
+  arr.sort((a,b)=>{
+    switch(sort){
+      case "no_asc": return nos[a.id]-nos[b.id];
+      case "title": return (a.title||"").localeCompare(b.title||"","ja");
+      case "updated": return (b.updated||"").localeCompare(a.updated||"");
+      case "fav": return (b.fav?1:0)-(a.fav?1:0) || nos[b.id]-nos[a.id];
+      default: return nos[b.id]-nos[a.id];
+    }
+  });
+
+  $("count").textContent=`${arr.length} 件 / 全 ${entries.length} 件`;
+  const list=$("list"), empty=$("empty");
+  if(entries.length===0){list.innerHTML=""; list.classList.remove("table-mode"); empty.classList.remove("hidden"); return;}
+  empty.classList.add("hidden");
+
+  if(settings.view==="table"){
+    list.classList.add("table-mode");
+    list.innerHTML=tableHTML(arr,nos,dups);
+  }else{
+    list.classList.remove("table-mode");
+    list.innerHTML=arr.map(e=>cardHTML(e,nos,dups)).join("");
+  }
+}
+function cardHTML(e,nos,dups){
+  const dup = e.pw && dups[e.pw]>1;
+  return `<div class="card" data-no="${e.id}">
+    <div class="top">
+      <span class="no">No.${nos[e.id]}</span>
+      <span class="ttl">${esc(e.title)||"(無題)"}</span>
+      ${e.category?`<span class="cat">${esc(e.category)}</span>`:""}
+      <button class="fav ${e.fav?"":"off"}" data-fav="${e.id}" title="お気に入り">${e.fav?"★":"☆"}</button>
+    </div>
+    ${row("ID",e.idmail,true)}
+    ${pwRow(e,dup)}
+    ${row("ユーザー",e.username,false)}
+    ${e.url?`<div class="row"><span class="lbl">URL</span><a class="val plain" href="${esc(e.url)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(e.url)}</a></div>`:""}
+    ${e.day?`<div class="row"><span class="lbl">登録日</span><span class="val plain">${esc(e.day)}</span></div>`:""}
+    ${e.memo?`<div class="memo">${esc(e.memo)}</div>`:""}
+    <div class="foot">
+      <button class="mini" data-edit="${e.id}">編集</button>
+      <button class="mini" data-del="${e.id}">削除</button>
+    </div>
+  </div>`;
+}
+function tableHTML(arr,nos,dups){
+  const head=`<tr>
+    <th>No</th><th>★</th><th>タイトル</th><th>カテゴリ</th><th>ID(Mail)</th>
+    <th>PW</th><th>ユーザー</th><th>操作</th></tr>`;
+  const body=arr.map(e=>{
+    const dup=e.pw&&dups[e.pw]>1;
+    const pwCell=e.pw
+      ? `<span class="mono pwdots" data-pwcell="${e.id}" data-pw="${esc(e.pw)}">••••••••</span>
+         <button class="mini" data-show="${e.id}">表示</button>
+         <button class="mini" data-copypw="${esc(e.pw)}">コピー</button>${dup?' <span class="dupstar" title="他の項目とパスワードが重複しています">★</span>':''}`
+      : "";
+    const idCell=e.idmail
+      ? `<span class="mono">${esc(e.idmail)}</span> <button class="mini" data-copy="${esc(e.idmail)}">コピー</button>`
+      : "";
+    return `<tr data-no="${e.id}">
+      <td class="no-c">${nos[e.id]}</td>
+      <td><button class="fav ${e.fav?"":"off"}" data-fav="${e.id}" title="お気に入り">${e.fav?"★":"☆"}</button></td>
+      <td class="tttl">${esc(e.title)||"(無題)"}</td>
+      <td>${e.category?`<span class="cat">${esc(e.category)}</span>`:""}</td>
+      <td>${idCell}</td>
+      <td>${pwCell}</td>
+      <td>${esc(e.username)}</td>
+      <td class="acts"><button class="mini" data-edit="${e.id}">編集</button><button class="mini" data-del="${e.id}">削除</button></td>
+    </tr>`;
+  }).join("");
+  return `<div class="tablewrap"><table class="tbl"><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
+}
+function row(lbl,val,copy){
+  if(!val) return "";
+  return `<div class="row"><span class="lbl">${lbl}</span><span class="val">${esc(val)}</span>${copy?`<button class="mini" data-copy="${esc(val)}">コピー</button>`:""}</div>`;
+}
+function pwRow(e,dup){
+  if(!e.pw) return "";
+  return `<div class="row">
+    <span class="lbl">PW</span>
+    <span class="val pwdots" data-pwcell="${e.id}" data-pw="${esc(e.pw)}">••••••••</span>
+    <button class="mini" data-show="${e.id}">表示</button>
+    <button class="mini" data-copypw="${esc(e.pw)}">コピー</button>
+    ${dup?`<span class="dupstar" title="他の項目とパスワードが重複しています">★</span>`:""}
+  </div>`;
+}
+
+/* =========================================================
+   List interactions (event delegation)
+========================================================= */
+$("list").addEventListener("click",e=>{
+  const t=e.target;
+  if(t.dataset.copy!==undefined){copyText(t.dataset.copy);return;}
+  if(t.dataset.copypw!==undefined){copyText(t.dataset.copypw,true);return;}
+  if(t.dataset.show!==undefined){
+    const cell=document.querySelector(`[data-pwcell="${t.dataset.show}"]`);
+    if(cell.classList.contains("pwdots")){cell.classList.remove("pwdots");cell.textContent=cell.dataset.pw;t.textContent="隠す";}
+    else{cell.classList.add("pwdots");cell.textContent="••••••••";t.textContent="表示";}
+    return;
+  }
+  if(t.dataset.fav!==undefined){toggleFav(t.dataset.fav);return;}
+  if(t.dataset.edit!==undefined){openForm(t.dataset.edit);return;}
+  if(t.dataset.del!==undefined){delEntry(t.dataset.del);return;}
+});
+async function toggleFav(id){const e=entries.find(x=>x.id===id);e.fav=!e.fav;await saveData();render();}
+async function delEntry(id){
+  const e=entries.find(x=>x.id===id);
+  if(!confirm(`No.${noMap()[id]}「${e.title||"(無題)"}」を削除しますか？`))return;
+  entries=entries.filter(x=>x.id!==id);
+  await saveData(); refreshCategoryFilter(); render(); toast("削除しました");
+}
+
+/* search/sort listeners */
+$("q").addEventListener("input",render);
+$("catFilter").addEventListener("change",render);
+$("sortSel").addEventListener("change",render);
+
+/* custom ★ filter dropdown */
+let markFilterValue="";
+const MARK_LABELS={
+  "":'<span class="fstar" style="color:var(--muted)">★</span> すべて',
+  "fav":'<span class="fstar" style="color:var(--fav)">★</span> お気に入り',
+  "dup":'<span class="fstar" style="color:var(--danger)">★</span> 重複あり'
+};
+function setMarkFilter(v){
+  markFilterValue=v;
+  $("markBtnLabel").innerHTML=MARK_LABELS[v];
+  render();
+}
+$("markBtn").onclick=e=>{e.stopPropagation();$("markMenu").classList.toggle("hidden");};
+$("markMenu").addEventListener("click",e=>{
+  const b=e.target.closest(".ddopt"); if(!b)return;
+  setMarkFilter(b.dataset.mark);
+  $("markMenu").classList.add("hidden");
+});
+document.addEventListener("click",()=>$("markMenu").classList.add("hidden"));
+$("viewSel").addEventListener("change",async()=>{settings.view=$("viewSel").value;await saveData();render();});
+
+/* =========================================================
+   Clipboard (auto-clear)
+========================================================= */
+async function copyText(text,isPw){
+  try{
+    await navigator.clipboard.writeText(text);
+    if(isPw){
+      toast("PWをコピー（20秒後に自動消去）");
+      if(clipTimer)clearTimeout(clipTimer);
+      clipTimer=setTimeout(async()=>{
+        try{await navigator.clipboard.writeText("");}catch(e){}
+      },20000);
+    }else toast("コピーしました");
+  }catch(e){
+    /* fallback */
+    const ta=document.createElement("textarea");ta.value=text;document.body.appendChild(ta);
+    ta.select();document.execCommand("copy");ta.remove();toast("コピーしました");
+  }
+}
+
+/* =========================================================
+   Add / Edit form (built dynamically)
+========================================================= */
+function openForm(id){
+  editingId = id??null;
+  const e = id!=null ? entries.find(x=>x.id===id) : {};
+  const dispNo = id!=null ? noMap()[id] : entries.length+1;
+  const cats=uniqueCategories(), mails=uniqueMails();
+  const html=`<div class="overlay" id="overlay">
+    <div class="modal">
+      <h2>${id!=null?`✏️ 編集 (No.${dispNo})`:"＋ 新規登録"}</h2>
+      <div class="twocol">
+        <div class="field"><label>No（登録順・自動）</label>
+          <input id="f_no" value="${dispNo}" readonly></div>
+        <div class="field"><label>登録日（任意）</label>
+          <input id="f_day" type="date" value="${esc(e.day||"")}"></div>
+      </div>
+      <div class="field"><label>タイトル</label>
+        <input id="f_title" value="${esc(e.title||"")}" placeholder="例）Amazon / 会社メール"></div>
+      <div class="field"><label>カテゴリ（履歴から選択・新規入力可）</label>
+        <input id="f_cat" list="catlist" value="${esc(e.category||"")}" placeholder="例）ショッピング">
+        <datalist id="catlist">${cats.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
+      <div class="field"><label>ID（メール等・半角／履歴から呼出可）</label>
+        <input id="f_id" class="lc" list="maillist" value="${esc(e.idmail||"")}"
+          autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="user@example.com">
+        <datalist id="maillist">${mails.map(m=>`<option value="${esc(m)}">`).join("")}</datalist></div>
+      <div class="field"><label>パスワード（半角）</label>
+        <div class="pwwrap">
+          <input id="f_pw" type="text" class="lc" autocapitalize="none" autocorrect="off" spellcheck="false"
+            value="${esc(e.pw||"")}" placeholder="パスワード">
+          <button class="mini" id="togglePw" type="button">👁</button>
+        </div>
+        <div class="strength"><div id="strBar"></div></div>
+        <div class="strmeta"><span id="strTxt">—</span><span id="dupTxt"></span></div>
+        <div class="genrow">
+          <label>長さ<input type="number" id="g_len" value="16" min="4" max="64"></label>
+          <label><input type="checkbox" id="g_up" checked>A-Z</label>
+          <label><input type="checkbox" id="g_low" checked>a-z</label>
+          <label><input type="checkbox" id="g_num" checked>0-9</label>
+          <label><input type="checkbox" id="g_sym" checked>記号</label>
+          <button class="mini" id="genBtn" type="button">🎲 生成</button>
+        </div>
+      </div>
+      <div class="field"><label>ユーザー名</label>
+        <input id="f_user" value="${esc(e.username||"")}" placeholder="表示名など"></div>
+      <div class="field"><label>URL（任意）</label>
+        <input id="f_url" class="lc" value="${esc(e.url||"")}" autocapitalize="none" placeholder="https://"></div>
+      <div class="field"><label>メモ（変更履歴など）</label>
+        <textarea id="f_memo" placeholder="例）2026-06-14 新規作成 / 旧PW xxxx">${esc(e.memo||"")}</textarea></div>
+      <div class="formfoot">
+        <button class="btn sec" id="cancelBtn" type="button">キャンセル</button>
+        ${id!=null
+          ? `<button class="btn" id="saveBtn" type="button">上書き保存</button>`
+          : `<button class="btn sec" id="saveBtn" type="button">保存して閉じる</button>
+             <button class="btn" id="saveContBtn" type="button">保存して続けて登録</button>`}
+      </div>
+    </div></div>`;
+  document.body.insertAdjacentHTML("beforeend",html);
+
+  $("cancelBtn").onclick=closeModal;
+  $("overlay").addEventListener("click",ev=>{if(ev.target.id==="overlay")closeModal();});
+  $("saveBtn").onclick=()=>saveForm(false);
+  const sc=$("saveContBtn"); if(sc) sc.onclick=()=>saveForm(true);
+  $("togglePw").onclick=()=>{const p=$("f_pw");p.type=p.type==="password"?"text":"password";};
+  $("genBtn").onclick=generatePw;
+  $("f_pw").addEventListener("input",updateStrength);
+  updateStrength();
+  setTimeout(()=>$("f_title").focus(),50);
+}
+function closeModal(){const o=$("overlay");if(o)o.remove();}
+
+// 同一内容(タイトル・ID・PW一致)の重複確認ダイアログ。"overwrite"|"new"|"cancel" を返す
+function dupDialog(no,title){
+  return new Promise(resolve=>{
+    const html=`<div class="overlay" id="dupOverlay" style="z-index:300">
+      <div class="modal" style="max-width:420px">
+        <h2>⚠️ 重複の確認</h2>
+        <p style="color:var(--muted);font-size:14px;margin:0 0 16px">
+          すでに同じ内容（タイトル・ID・パスワードが一致）の登録があります。<br>
+          <b style="color:var(--txt)">No.${no}「${esc(title)||"(無題)"}」</b><br>どうしますか？</p>
+        <div class="formfoot dup3">
+          <button class="btn sec" id="dupOver" type="button">上書き登録</button>
+          <button class="btn" id="dupNew" type="button">別で登録</button>
+          <button class="btn sec" id="dupCancel" type="button">キャンセル</button>
+        </div>
+      </div></div>`;
+    document.body.insertAdjacentHTML("beforeend",html);
+    const close=v=>{const o=$("dupOverlay"); if(o)o.remove(); resolve(v);};
+    $("dupOver").onclick=()=>close("overwrite");
+    $("dupNew").onclick=()=>close("new");
+    $("dupCancel").onclick=()=>close("cancel");
+    $("dupOverlay").addEventListener("click",ev=>{if(ev.target.id==="dupOverlay")close("cancel");});
+  });
+}
+
+function generatePw(){
+  const len=Math.min(64,Math.max(4,+$("g_len").value||16));
+  let pool="";
+  if($("g_up").checked)pool+="ABCDEFGHJKLMNPQRSTUVWXYZ";
+  if($("g_low").checked)pool+="abcdefghijkmnpqrstuvwxyz";
+  if($("g_num").checked)pool+="23456789";
+  if($("g_sym").checked)pool+="!@#$%^&*-_=+?";
+  if(!pool){toast("文字種を1つ以上選択");return;}
+  const arr=crypto.getRandomValues(new Uint32Array(len));
+  let out="";for(let i=0;i<len;i++)out+=pool[arr[i]%pool.length];
+  const p=$("f_pw");p.type="text";p.value=out;updateStrength();
+}
+function scorePw(pw){
+  if(!pw)return{score:0,label:"—",color:"var(--line)"};
+  let s=0;
+  if(pw.length>=8)s++; if(pw.length>=12)s++; if(pw.length>=16)s++;
+  if(/[a-z]/.test(pw)&&/[A-Z]/.test(pw))s++;
+  if(/\d/.test(pw))s++; if(/[^A-Za-z0-9]/.test(pw))s++;
+  const map=[
+    {l:"とても弱い",c:"var(--danger)"},{l:"弱い",c:"var(--danger)"},
+    {l:"普通",c:"var(--warn)"},{l:"やや強い",c:"var(--warn)"},
+    {l:"強い",c:"var(--ok)"},{l:"とても強い",c:"var(--ok)"},{l:"最強",c:"var(--ok)"}];
+  const idx=Math.min(s,6);
+  return{score:Math.round((idx/6)*100),label:map[idx].l,color:map[idx].c};
+}
+function updateStrength(){
+  const pw=$("f_pw").value;
+  const r=scorePw(pw);
+  const bar=$("strBar");bar.style.width=r.score+"%";bar.style.background=r.color;
+  $("strTxt").textContent="強度: "+r.label;
+  const dup=pw && entries.some(e=>e.pw===pw && e.id!==editingId);
+  $("dupTxt").innerHTML=dup?'<span class="dupstar" title="他の項目とパスワードが重複しています">★</span>':"";
+}
+
+async function saveForm(keepOpen){
+  const get=id=>$(id).value.trim();
+  const title=get("f_title");
+  const pw=$("f_pw").value;
+  if(!title && !pw){toast("タイトルかパスワードを入力してください");return;}
+  const idmail=get("f_id");
+  let targetId=editingId, dupHandled=false;
+  const dup=entries.find(e=>e.id!==editingId && (e.title||"")===title && (e.idmail||"")===idmail && (e.pw||"")===pw);
+  if(dup){
+    const choice=await dupDialog(noMap()[dup.id],dup.title);
+    if(choice==="cancel") return;
+    if(choice==="overwrite") targetId=dup.id;   // 既存の重複項目に上書き
+    // "new" → targetId は元のまま（新規 or 編集中の項目）
+    dupHandled=true;
+  }
+  if(targetId!=null && !dupHandled && !confirm("編集内容で上書きしますか？"))return;
+  const now=new Date().toISOString();
+  const obj={
+    day:get("f_day"), title:title, category:get("f_cat"),
+    idmail:get("f_id"), pw:pw, username:get("f_user"),
+    url:get("f_url"), memo:$("f_memo").value, fav:false, updated:now
+  };
+  if(targetId!=null){
+    const e=entries.find(x=>x.id===targetId);
+    obj.fav=e.fav; obj.id=e.id; obj.created=e.created||now;
+    Object.assign(e,obj);
+  }else{
+    obj.id=genId(); obj.created=now;
+    entries.push(obj);
+  }
+  await saveData(); refreshCategoryFilter(); render();
+  if(keepOpen){ closeModal(); openForm(null); toast("保存しました（続けて入力できます）"); }
+  else { closeModal(); toast("保存しました"); }
+}
+
+/* =========================================================
+   Menu / Settings / CSV
+========================================================= */
+$("addBtn").onclick=()=>openForm(null);
+$("menuBtn").onclick=openMenu;
+
+function openMenu(){
+  const html=`<div class="overlay" id="overlay">
+    <div class="modal">
+      <h2>⚙️ メニュー</h2>
+      <div class="setrow">
+        <div><div class="sl">画面モード</div><div class="sd">表示テーマを選択</div></div>
+        <select id="setTheme" style="padding:8px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--line)">
+          <option value="light">ライト（通常）</option><option value="dark">ダーク</option></select>
+      </div>
+      <div class="setrow">
+        <div><div class="sl">自動ロック</div><div class="sd">無操作で自動的にロック</div></div>
+        <select id="setAuto" style="padding:8px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--line)">
+          <option value="0">オフ</option><option value="1">1分</option><option value="5">5分</option>
+          <option value="10">10分</option><option value="30">30分</option></select>
+      </div>
+      <div class="setrow"><div><div class="sl">📤 CSVエクスポート</div><div class="sd">バックアップ用（平文・取扱注意）</div></div>
+        <button class="mini" id="expBtn">出力</button></div>
+      <div class="setrow"><div><div class="sl">📥 CSVインポート</div><div class="sd">既存に追加で読み込み</div></div>
+        <button class="mini" id="impBtn">読込</button></div>
+      <div class="setrow"><div><div class="sl">🔑 マスターPW変更</div><div class="sd">暗号化キーを変更</div></div>
+        <button class="mini" id="chgBtn">変更</button></div>
+      <div class="setrow"><div><div class="sl">🔒 今すぐロック</div></div>
+        <button class="mini" id="lockNow">ロック</button></div>
+      <div class="formfoot"><button class="btn sec" id="cancelBtn" type="button">閉じる</button></div>
+      <input type="file" id="csvFile" accept=".csv,text/csv" class="hidden">
+    </div></div>`;
+  document.body.insertAdjacentHTML("beforeend",html);
+  $("setTheme").value=settings.theme;
+  $("setTheme").onchange=async()=>{settings.theme=$("setTheme").value;applyTheme();await saveData();toast("画面モードを変更");};
+  $("setAuto").value=String(settings.autolock);
+  $("setAuto").onchange=async()=>{settings.autolock=+$("setAuto").value;await saveData();resetLockTimer();toast("設定を保存");};
+  $("cancelBtn").onclick=closeModal;
+  $("overlay").addEventListener("click",ev=>{if(ev.target.id==="overlay")closeModal();});
+  $("lockNow").onclick=lock;
+  $("expBtn").onclick=exportCSV;
+  $("impBtn").onclick=()=>$("csvFile").click();
+  $("csvFile").onchange=importCSV;
+  $("chgBtn").onclick=changeMaster;
+}
+
+const CSV_COLS=["no","day","title","category","idmail","pw","username","url","memo","fav","created","updated"];
+const CSV_HEAD=["通しNo","登録日","タイトル","カテゴリ","ID(Mail)","パスワード","ユーザー名","URL","メモ","お気に入り","作成日時","更新日時"];
+
+function csvCell(v){
+  v=(v??"").toString();
+  return /[",\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
+}
+function exportCSV(){
+  if(!confirm("⚠️ CSVはパスワードを平文（暗号化なし）で書き出します。\n保存先の管理に十分注意してください。続行しますか？"))return;
+  const rows=[CSV_HEAD.join(",")];
+  const nos=noMap();
+  entries.slice().sort((a,b)=>nos[a.id]-nos[b.id]).forEach(e=>{
+    rows.push(CSV_COLS.map(c=>csvCell(c==="no"?nos[e.id]:e[c])).join(","));
+  });
+  const blob=new Blob(["﻿"+rows.join("\r\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="passwords_"+new Date().toISOString().slice(0,10)+".csv";
+  a.click(); URL.revokeObjectURL(a.href);
+  toast("CSVを出力しました");
+}
+function parseCSV(text){
+  const rows=[];let row=[],cur="",q=false;
+  text=text.replace(/^﻿/,"");
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){
+      if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; }
+      else cur+=c;
+    }else{
+      if(c==='"')q=true;
+      else if(c===","){row.push(cur);cur="";}
+      else if(c==="\n"){row.push(cur);rows.push(row);row=[];cur="";}
+      else if(c==="\r"){}
+      else cur+=c;
+    }
+  }
+  if(cur!==""||row.length){row.push(cur);rows.push(row);}
+  return rows.filter(r=>r.length>1||(r.length===1&&r[0]!==""));
+}
+// インポート時：ID・PW一致でタイトルが異なるときの確認。"yes"|"no"|"yesAll"|"noAll"
+function importAskDialog(inc,exist,no){
+  return new Promise(resolve=>{
+    const html=`<div class="overlay" id="impOverlay" style="z-index:320">
+      <div class="modal" style="max-width:440px">
+        <h2>📥 重複の確認</h2>
+        <p style="color:var(--muted);font-size:14px;margin:0 0 12px">
+          同じ <b style="color:var(--txt)">ID・パスワード</b> で <b style="color:var(--txt)">タイトルが異なる</b> 項目があります。登録しますか？</p>
+        <div style="background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:13px;margin-bottom:14px;line-height:1.7">
+          <div>既存: <b>No.${no}</b>「${esc(exist.title)||"(無題)"}」</div>
+          <div>取込: 「${esc(inc.title)||"(無題)"}」</div>
+          <div style="color:var(--muted)">ID: ${esc(inc.idmail)||"(なし)"}</div>
+        </div>
+        <div class="formfoot dup3">
+          <button class="btn sec" id="impNo" type="button">登録しない</button>
+          <button class="btn" id="impYes" type="button">登録する</button>
+        </div>
+        <div class="formfoot" style="margin-top:8px">
+          <button class="btn sec" id="impNoAll" type="button">以降すべて登録しない</button>
+          <button class="btn sec" id="impYesAll" type="button">以降すべて登録する</button>
+        </div>
+      </div></div>`;
+    document.body.insertAdjacentHTML("beforeend",html);
+    const close=v=>{const o=$("impOverlay");if(o)o.remove();resolve(v);};
+    $("impNo").onclick=()=>close("no");
+    $("impYes").onclick=()=>close("yes");
+    $("impNoAll").onclick=()=>close("noAll");
+    $("impYesAll").onclick=()=>close("yesAll");
+  });
+}
+
+async function importCSV(ev){
+  const file=ev.target.files[0]; if(!file)return;
+  const text=await file.text();
+  ev.target.value=""; // 同じファイルを再選択できるようにリセット
+  const rows=parseCSV(text);
+  if(rows.length<2){toast("データがありません");return;}
+  rows.shift(); // header
+  let added=0, skipDup=0, skipUser=0, applyAll=null; // applyAll: null|true|false
+  for(const r of rows){
+    const o={}; CSV_COLS.forEach((c,i)=>o[c]=r[i]??"");
+    if(!o.title && !o.pw && !o.idmail) continue;
+    delete o.no; // CSVのNoは表示用。識別子は新規発行し登録順は作成日時で決まる
+
+    // ID・PWが一致する既存項目（資格情報の重複）を探す
+    const hasCred=(o.idmail||"")!=="" || (o.pw||"")!=="";
+    const cred = hasCred ? entries.find(e=>(e.idmail||"")===(o.idmail||"") && (e.pw||"")===(o.pw||"")) : null;
+    if(cred){
+      if((cred.title||"")===(o.title||"")){ skipDup++; continue; } // 完全重複 → 自動スキップ
+      // タイトルが異なる → 確認（または一括適用）
+      let yes;
+      if(applyAll!==null) yes=applyAll;
+      else{
+        const c=await importAskDialog(o,cred,noMap()[cred.id]);
+        if(c==="yesAll"){applyAll=true; yes=true;}
+        else if(c==="noAll"){applyAll=false; yes=false;}
+        else yes=(c==="yes");
+      }
+      if(!yes){ skipUser++; continue; }
+    }
+
+    o.id=genId(); o.fav=/^(true|1|★|yes|はい)$/i.test((o.fav||"").trim());
+    o.created=(o.created||"").trim()||new Date().toISOString();
+    o.updated=(o.updated||"").trim()||new Date().toISOString();
+    entries.push(o); added++;
+  }
+  await saveData(); refreshCategoryFilter(); render(); closeModal();
+  let msg=`${added} 件を読み込みました`;
+  const ex=[]; if(skipDup)ex.push(`重複スキップ ${skipDup}件`); if(skipUser)ex.push(`見送り ${skipUser}件`);
+  if(ex.length)msg+=`（${ex.join(" / ")}）`;
+  toast(msg);
+}
+
+async function changeMaster(){
+  const np=prompt("新しいマスターパスワード（6文字以上）を入力:");
+  if(np===null)return;
+  if(np.length<6){alert("6文字以上にしてください");return;}
+  if(prompt("確認用にもう一度入力:")!==np){alert("一致しません");return;}
+  const salt=crypto.getRandomValues(new Uint8Array(16));
+  cryptoKey=await deriveKey(np,salt);
+  localStorage.setItem(K_SALT,b64(salt));
+  localStorage.setItem(K_VERIFY,await encryptStr(cryptoKey,VERIFY_TOKEN));
+  await saveData();
+  toast("マスターパスワードを変更しました");
+  closeModal();
+}
+
+/* =========================================================
+   Toast
+========================================================= */
+let toastTimer=null;
+function toast(msg){
+  const t=$("toast");t.textContent=msg;t.classList.add("show");
+  if(toastTimer)clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove("show"),2200);
+}
+
+/* =========================================================
+   Init
+========================================================= */
+$("unlockBtn").onclick=doUnlock;
+$("mp1").addEventListener("keydown",e=>{if(e.key==="Enter"){if(isFirstRun())$("mp2").focus();else doUnlock();}});
+$("mp2").addEventListener("keydown",e=>{if(e.key==="Enter")doUnlock();});
+applyThemeEarly();
+showLockUI();
+
+/* PWA: Service Worker 登録（http/https配信時のみ。file://やlocalStorage非対応時は無視） */
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+  window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{});});
+}
+</script>
+</body>
+</html>

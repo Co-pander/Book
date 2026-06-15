@@ -149,7 +149,8 @@
   .tbl .mini{padding:2px 7px;}
   .tbl .fav{font-size:15px;}
   .tbl tbody tr:hover td{background:var(--panel2);}
-  .tbl .tttl{font-weight:600; white-space:normal; max-width:240px; word-break:break-word;}
+  .tbl .tttl{font-weight:600; white-space:normal; min-width:150px; max-width:260px; word-break:break-word;}
+  .tbl .uname{white-space:normal; max-width:90px; word-break:break-word; color:var(--muted);}
   .tbl .mono{font-family:ui-monospace,Menlo,Consolas,monospace;}
   .tbl td.acts{white-space:nowrap;}
   .tbl td.acts .mini{margin-left:4px;}
@@ -536,7 +537,7 @@ function tableHTML(arr,nos,dups){
       <td>${e.category?`<span class="cat">${esc(e.category)}</span>`:""}</td>
       <td>${idCell}</td>
       <td>${pwCell}</td>
-      <td>${esc(e.username)}</td>
+      <td class="uname">${esc(e.username)}</td>
       <td class="acts"><button class="mini" data-edit="${e.id}">編集</button><button class="mini" data-del="${e.id}">削除</button></td>
     </tr>`;
   }).join("");

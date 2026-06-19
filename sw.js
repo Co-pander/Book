@@ -1,7 +1,7 @@
 /* パスワード管理 PWA Service Worker
    アプリ本体を完全オフラインで動かすためのキャッシュ。
    ※登録データはここではなく各端末のlocalStorage(暗号化)に保存される。 */
-const CACHE = "pwmgr-v3";   // ← index.html等を更新したら数字を上げて再キャッシュ
+const CACHE = "pwmgr-v4";   // ← index.html等を更新したら数字を上げて再キャッシュ
 const ASSETS = [
   "./",
   "./index.html",

@@ -149,7 +149,9 @@
   .tbl .mini{padding:2px 7px;}
   .tbl .fav{font-size:15px;}
   .tbl tbody tr:hover td{background:var(--panel2);}
-  .tbl .tttl{font-weight:600; white-space:normal; min-width:150px; max-width:260px; word-break:break-word;}
+  .tbl tbody tr.selected td{background:var(--chip);}
+  .tbl .tttl{font-weight:600; white-space:normal; min-width:150px; max-width:260px; word-break:break-word;
+             cursor:pointer; user-select:none; -webkit-user-select:none; touch-action:manipulation;}
   .tbl .uname{white-space:normal; max-width:90px; word-break:break-word; color:var(--muted);}
   .tbl .mono{font-family:ui-monospace,Menlo,Consolas,monospace;}
   .tbl td.acts{white-space:nowrap;}
@@ -288,6 +290,8 @@ let settings={autolock:5, theme:"light", view:"card"};   // autolock: minutes(0=
 let lockTimer=null;
 let editingId=null;          // null = new
 let clipTimer=null;
+let selectedId=null;         // 帳票表示で選択中の行
+let lastTitleTap={id:null,t:0}; // タイトルのダブルタップ判定用
 
 /* =========================================================
    Crypto helpers (Web Crypto, AES-GCM + PBKDF2)
@@ -574,7 +578,59 @@ $("list").addEventListener("click",e=>{
   if(t.dataset.fav!==undefined){toggleFav(t.dataset.fav);return;}
   if(t.dataset.edit!==undefined){openForm(t.dataset.edit);return;}
   if(t.dataset.del!==undefined){delEntry(t.dataset.del);return;}
+
+  // 帳票表示：行を選択（グレイ）＋ タイトルのダブルタップでPWポップアップ
+  if(settings.view==="table"){
+    const tr=t.closest("tr[data-no]");
+    if(!tr) return;
+    const id=tr.dataset.no;
+    selectTableRow(id);
+    if(t.closest("td.tttl")){
+      const now=Date.now();
+      if(lastTitleTap.id===id && now-lastTitleTap.t<400){ lastTitleTap={id:null,t:0}; openPwPopup(id); }
+      else lastTitleTap={id,t:now};
+    }
+  }
 });
+function selectTableRow(id){
+  selectedId=id;
+  document.querySelectorAll(".tbl tr.selected").forEach(r=>r.classList.remove("selected"));
+  const tr=document.querySelector(`.tbl tr[data-no="${id}"]`);
+  if(tr) tr.classList.add("selected");
+}
+// タイトルのダブルタップで開くPW操作ポップアップ（横スクロール不要で表示/コピー/編集）
+function openPwPopup(id){
+  const e=entries.find(x=>x.id===id); if(!e) return;
+  const no=noMap()[id];
+  const html=`<div class="overlay" id="pwpop" style="z-index:260">
+    <div class="modal" style="max-width:360px">
+      <h2 style="font-size:16px">No.${no}「${esc(e.title)||"(無題)"}」</h2>
+      ${e.idmail?`<div class="field" style="margin-bottom:10px"><label>ID</label>
+        <div class="pwwrap"><input value="${esc(e.idmail)}" readonly>
+        <button class="mini" id="pop_idcopy" type="button">コピー</button></div></div>`:""}
+      <div class="field" style="margin-bottom:10px"><label>パスワード</label>
+        <div class="pwwrap">
+          <input id="pop_pw" type="password" value="${esc(e.pw||"")}" readonly>
+          <button class="mini" id="pop_show" type="button">表示</button>
+        </div>
+      </div>
+      <div class="formfoot">
+        <button class="btn sec" id="pop_copy" type="button">コピー</button>
+        <button class="btn" id="pop_edit" type="button">編集</button>
+      </div>
+      <div class="formfoot" style="margin-top:8px">
+        <button class="btn sec" id="pop_close" type="button">閉じる</button>
+      </div>
+    </div></div>`;
+  document.body.insertAdjacentHTML("beforeend",html);
+  const close=()=>{const o=$("pwpop"); if(o)o.remove();};
+  $("pop_show").onclick=()=>{const p=$("pop_pw"); const show=p.type==="password"; p.type=show?"text":"password"; $("pop_show").textContent=show?"隠す":"表示";};
+  $("pop_copy").onclick=()=>{ if(e.pw)copyText(e.pw,true); else toast("パスワードがありません"); };
+  const idc=$("pop_idcopy"); if(idc) idc.onclick=()=>copyText(e.idmail);
+  $("pop_edit").onclick=()=>{ close(); openForm(id); };
+  $("pop_close").onclick=close;
+  $("pwpop").addEventListener("click",ev=>{if(ev.target.id==="pwpop")close();});
+}
 async function toggleFav(id){const e=entries.find(x=>x.id===id);e.fav=!e.fav;await saveData();render();}
 async function delEntry(id){
   const e=entries.find(x=>x.id===id);
